@@ -10,7 +10,7 @@ const nonIndexRoutes = computed(() => routes.filter((r) => !!r.meta?.title));
 <template>
   <AppPage title="Home Page" :back="false">
     <p>
-      hêhheheheheeheheheehheheehehh This page is a home page in this boilerplate. You can use the links below to visit other
+      bỏ nhé không thêm chữ ở đây This page is a home page in this boilerplate. You can use the links below to visit other
       pages with their own functionality.
     </p>
     <ul class="index-page__links">
