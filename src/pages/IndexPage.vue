@@ -1,88 +1,53 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed } from 'vue';
+import { routes } from '@/router';
 import AppPage from '@/components/AppPage.vue';
+import AppLink from '@/components/AppLink.vue';
 
-// 1. Khai báo biến để hứng dữ liệu
-const userName = ref('Khách');
-const userId = ref(0);
-
-// 2. Hàm lấy thông tin từ App Android gửi sang
-onMounted(() => {
-  // Bùa chú: Dòng dưới bảo ESLint "Đừng bắt lỗi any ở dòng tiếp theo nữa"
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const webApp = (window as any).Telegram?.WebApp;
-
-  if (webApp && webApp.initDataUnsafe?.user) {
-    userName.value = webApp.initDataUnsafe.user.first_name + ' ' + webApp.initDataUnsafe.user.last_name;
-    userId.value = webApp.initDataUnsafe.user.id;
-
-    // Báo cho Android biết là Web đã load xong
-    webApp.ready();
-  }
-});
-
-// 3. Hàm gọi ngược về Android: Yêu cầu đóng App
-const handleCloseApp = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).Telegram?.WebApp.close();
-};
+const nonIndexRoutes = computed(() => routes.filter((r) => !!r.meta?.title));
 </script>
 
 <template>
-  <AppPage title="Demo Tương Tác" :back="false">
-    <div class="container">
-      <div class="user-card">
-        <h3>👋 Xin chào: {{ userName }}</h3>
-        <p>User ID: <strong>{{ userId }}</strong></p>
-        <p class="note">(Dữ liệu này do Android App gửi sang)</p>
-      </div>
-
-      <button class="btn-close" @click="handleCloseApp">
-        ❌ Đóng Mini App
-      </button>
-
-      <p class="explain">
-        Khi bấm nút trên, Web sẽ gọi lệnh <code>close()</code>,
-        Android sẽ bắt được và đóng Activity.
-      </p>
-    </div>
+  <AppPage title="Home Page" :back="false">
+    <p>
+      bỏ nhé không thêm chữ ở đây  This page is a home page in this boilerplate. You can use the links below to visit other
+      pages with their own functionality.
+    </p>
+    <ul class="index-page__links">
+      <li v-for="route in nonIndexRoutes" :key="route.name" class="index-page__link-item">
+        <AppLink class="index-page__link" :to="{ name: route.name }">
+          <i v-if="route.meta?.icon" class="index-page__link-icon">
+            <component :is="route.meta.icon" />
+          </i>
+          {{ route.meta!.title }}
+        </AppLink>
+      </li>
+    </ul>
   </AppPage>
 </template>
 
 <style scoped>
-.container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  text-align: center;
-  padding: 20px 0;
+.index-page__links {
+  list-style: none;
+  padding-left: 0;
 }
 
-.user-card {
-  background-color: var(--tg-theme-secondary-bg-color, #232e3c);
-  padding: 20px;
-  border-radius: 12px;
-  width: 100%;
-}
-
-.btn-close {
-  background-color: var(--tg-theme-destructive-text-color, #ec3942);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 16px;
+.index-page__link {
   font-weight: bold;
-  cursor: pointer;
+  display: inline-flex;
+  gap: 5px;
 }
 
-.btn-close:active {
-  opacity: 0.8;
+.index-page__link-item + .index-page__link-item {
+  margin-top: 10px;
 }
 
-.note, .explain {
-  color: var(--tg-theme-hint-color, #7d8b99);
-  font-size: 14px;
+.index-page__link-icon {
+  width: 20px;
+  display: block;
+}
+
+.index-page__link-icon svg {
+  display: block;
 }
 </style>
