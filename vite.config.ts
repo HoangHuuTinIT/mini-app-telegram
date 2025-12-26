@@ -26,4 +26,7 @@ export default defineConfig({
     // Exposes your dev server and makes it accessible for the devices in the same network.
     host: true,
   },
+  build: {
+    target: 'esnext' // Cho phép sử dụng các tính năng JS mới nhất (bao gồm top-level await)
+  }
 })
