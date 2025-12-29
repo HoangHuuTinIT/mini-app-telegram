@@ -5,19 +5,39 @@ import AppPage from '@/components/AppPage.vue';
 const form = ref({
   name: '',
   age: '',
-  job: ''
+  job: '',
+  token: '',
+  userId: ''
 });
 
 // 4. KHI MỞ WEB LÊN: ĐỌC DỮ LIỆU TỪ HASH (Sau dấu #)
 onMounted(() => {
-  // Hash sẽ có dạng: #tgWebAppData=...&name=Tin&age=20...
-  // .slice(1) để bỏ dấu # ở đầu đi
-  const hashString = window.location.hash.slice(1);
-  const params = new URLSearchParams(hashString);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proxy = (window as any).TelegramWebviewProxy;
 
-  form.value.name = params.get('name') || '';
-  form.value.age = params.get('age') || '';
-  form.value.job = params.get('job') || '';
+    if (proxy && proxy.getStartupParams) {
+      // 1. Gọi hàm getStartupParams() của Android
+      // Hàm này chạy đồng bộ và trả về chuỗi JSON ngay lập tức
+      const jsonString = proxy.getStartupParams();
+
+      console.log("Dữ liệu nhận từ Android:", jsonString);
+
+      // 2. Parse JSON ra để dùng
+      const data = JSON.parse(jsonString);
+
+      form.value.name = data.name || '';
+      form.value.age = data.age || '';
+      form.value.job = data.job || '';
+      form.value.token = data.token || '';
+      form.value.userId = data.userId || '';
+
+    } else {
+      console.warn("Không tìm thấy Android Bridge (Đang chạy trên trình duyệt thường?)");
+    }
+  } catch (e) {
+    console.error("Lỗi lấy dữ liệu khởi tạo:", e);
+  }
 });
 
 // 5. KHI BẤM XÁC NHẬN (Giữ nguyên như cũ)
@@ -58,7 +78,7 @@ const sendBackToAndroid = () => {
         <label>Nghề:</label>
         <input v-model="form.job" />
       </div>
-
+      <p>Token nhận được: {{ form.token.substring(0, 10) }}...</p>
       <button class="btn-confirm" @click="sendBackToAndroid">
         XÁC NHẬN & QUAY VỀ
       </button>
