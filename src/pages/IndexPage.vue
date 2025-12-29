@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import AppPage from '@/components/AppPage.vue';
-
+import axios from 'axios';
 // --- 1. ĐỊNH NGHĨA DỮ LIỆU ---
 interface Product {
   id: number;
@@ -65,46 +65,47 @@ onMounted(() => {
   // Lắng nghe sự kiện bấm nút Main Button
   tg?.MainButton.onClick(async () => {
     if (currentView.value === 'menu') {
-      // Chuyển sang màn hình Order
-      currentView.value = 'order';
-      tg.BackButton.show();
+        currentView.value = 'order';
+        tg.BackButton.show();
     } else {
-      // ==> BẮT ĐẦU QUY TRÌNH THANH TOÁN <==
+        // ==> BẮT ĐẦU THANH TOÁN
+        tg.MainButton.showProgress();
 
-      tg.MainButton.showProgress(); // Hiện vòng xoay loading trên nút
+        try {
+            // 1. GỌI SERVER BACKEND CỦA BẠN (Cổng 3000)
+            // Lưu ý: Nếu chạy trên điện thoại thật, bạn cần thay 'localhost' bằng địa chỉ IP LAN (ví dụ 192.168.1.x) hoặc dùng ngrok.
+            // Nếu test trên PC (Telegram Desktop) thì localhost là OK.
+            const response = await axios.post('http://localhost:3000/api/create-invoice', {
+                cart: cart.value,
+                total: totalPrice.value
+            });
 
-      try {
-        // BƯỚC 1: Gọi API lên Server của bạn để tạo Hóa đơn
-        // (Bạn cần một Backend Python/NodeJS để làm việc này)
-        // Ví dụ giả lập: const response = await fetch('/api/create-invoice', { method: 'POST', body: ... })
-        // const result = await response.json();
+            const { invoiceLink } = response.data;
 
-        // Giả sử Server trả về Invoice URL này (đây là link demo của Telegram)
-        const invoiceUrl = "https://t.me/$3y3p18X...";
-
-        // BƯỚC 2: Mở popup thanh toán Native của Telegram
-        tg.openInvoice(invoiceUrl, (status: string) => {
-            // Callback này chạy khi popup đóng lại
-            if (status === 'paid') {
-                tg.showAlert("Thanh toán thành công! Cảm ơn bạn.");
-                tg.close(); // Đóng App
-            } else if (status === 'cancelled') {
-                tg.showAlert("Bạn đã hủy thanh toán.");
-            } else if (status === 'failed') {
-                tg.showAlert("Thanh toán thất bại.");
+            if (invoiceLink) {
+                // 2. MỞ POPUP THANH TOÁN CỦA TELEGRAM
+                tg.openInvoice(invoiceLink, (status: string) => {
+                    if (status === 'paid') {
+                        tg.showAlert("✅ Thanh toán thành công! Cảm ơn bạn.");
+                        tg.close();
+                    } else if (status === 'cancelled') {
+                        tg.showAlert("Đã hủy thanh toán.");
+                    } else {
+                        tg.showAlert("Trạng thái: " + status);
+                    }
+                });
             } else {
-                tg.showAlert("Trạng thái: " + status);
+                tg.showAlert("Không nhận được link hóa đơn!");
             }
-        });
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-        tg.showAlert("Lỗi tạo hóa đơn!");
-      } finally {
-        tg.MainButton.hideProgress(); // Tắt loading
-      }
+        } catch (error) {
+            console.error(error);
+            tg.showAlert("Lỗi kết nối tới Server Backend!");
+        } finally {
+            tg.MainButton.hideProgress();
+        }
     }
-  });
+});
 
   // Lắng nghe nút Back (trên thanh tiêu đề)
   tg?.BackButton.onClick(() => {
