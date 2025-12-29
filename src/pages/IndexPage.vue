@@ -63,21 +63,46 @@ onMounted(() => {
   });
 
   // Lắng nghe sự kiện bấm nút Main Button
-  tg?.MainButton.onClick(() => {
+  tg?.MainButton.onClick(async () => {
     if (currentView.value === 'menu') {
-      // Đang ở Menu -> Chuyển sang Order
+      // Chuyển sang màn hình Order
       currentView.value = 'order';
-      // tg.BackButton.show(); // Hiện nút Back
+      tg.BackButton.show();
     } else {
-      // Đang ở Order -> Gửi đơn hàng & Đóng App
-      const dataToSend = {
-        cart: cart.value,
-        total: totalPrice.value,
-        user: tg.initDataUnsafe?.user
-      };
+      // ==> BẮT ĐẦU QUY TRÌNH THANH TOÁN <==
 
-      // Gửi dữ liệu về cho Bot (hoặc Android App sau này)
-      tg.sendData(JSON.stringify(dataToSend));
+      tg.MainButton.showProgress(); // Hiện vòng xoay loading trên nút
+
+      try {
+        // BƯỚC 1: Gọi API lên Server của bạn để tạo Hóa đơn
+        // (Bạn cần một Backend Python/NodeJS để làm việc này)
+        // Ví dụ giả lập: const response = await fetch('/api/create-invoice', { method: 'POST', body: ... })
+        // const result = await response.json();
+
+        // Giả sử Server trả về Invoice URL này (đây là link demo của Telegram)
+        const invoiceUrl = "https://t.me/$3y3p18X...";
+
+        // BƯỚC 2: Mở popup thanh toán Native của Telegram
+        tg.openInvoice(invoiceUrl, (status: string) => {
+            // Callback này chạy khi popup đóng lại
+            if (status === 'paid') {
+                tg.showAlert("Thanh toán thành công! Cảm ơn bạn.");
+                tg.close(); // Đóng App
+            } else if (status === 'cancelled') {
+                tg.showAlert("Bạn đã hủy thanh toán.");
+            } else if (status === 'failed') {
+                tg.showAlert("Thanh toán thất bại.");
+            } else {
+                tg.showAlert("Trạng thái: " + status);
+            }
+        });
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+        tg.showAlert("Lỗi tạo hóa đơn!");
+      } finally {
+        tg.MainButton.hideProgress(); // Tắt loading
+      }
     }
   });
 
