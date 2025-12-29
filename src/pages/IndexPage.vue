@@ -1,102 +1,209 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import AppPage from '@/components/AppPage.vue';
 
-const form = ref({
-  name: '',
-  age: '',
-  job: '',
-  token: '',
-  userId: ''
+// --- 1. ĐỊNH NGHĨA DỮ LIỆU ---
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  icon: string; // Dùng Emoji cho nhanh, bạn có thể thay bằng link ảnh
+}
+
+const products = ref<Product[]>([
+  { id: 1, name: 'Burger', price: 4.99, icon: '🍔' },
+  { id: 2, name: 'Fries', price: 1.49, icon: '🍟' },
+  { id: 3, name: 'Taco', price: 3.99, icon: '🌮' },
+  { id: 4, name: 'Hotdog', price: 3.49, icon: '🌭' },
+  { id: 5, name: 'Pizza', price: 7.99, icon: '🍕' },
+  { id: 6, name: 'Donut', price: 1.49, icon: '🍩' },
+  { id: 7, name: 'Coke', price: 1.49, icon: '🥤' },
+  { id: 8, name: 'Icecream', price: 5.99, icon: '🍦' },
+]);
+
+// Trạng thái giỏ hàng: { id_món: số_lượng }
+const cart = ref<{ [key: number]: number }>({});
+const currentView = ref<'menu' | 'order'>('menu'); // Quản lý màn hình
+const userInfo = ref<string>('');
+
+// --- 2. LOGIC TÍNH TOÁN ---
+const totalPrice = computed(() => {
+  let total = 0;
+  for (const [id, qty] of Object.entries(cart.value)) {
+    const product = products.value.find(p => p.id === Number(id));
+    if (product) total += product.price * qty;
+  }
+  return total;
 });
 
-// 4. KHI MỞ WEB LÊN: ĐỌC DỮ LIỆU TỪ HASH (Sau dấu #)
+// --- 3. KẾT NỐI VỚI TELEGRAM (QUAN TRỌNG) ---
+// Lấy đối tượng WebApp từ window
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tg = (window as any).Telegram?.WebApp;
+
 onMounted(() => {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const proxy = (window as any).TelegramWebviewProxy;
+  // Báo cho Telegram biết App đã sẵn sàng
+  tg?.ready();
+  tg?.expand(); // Mở full màn hình
 
-    if (proxy && proxy.getStartupParams) {
-      // 1. Gọi hàm getStartupParams() của Android
-      // Hàm này chạy đồng bộ và trả về chuỗi JSON ngay lập tức
-      const jsonString = proxy.getStartupParams();
+  // Lấy thông tin User từ Telegram thật
+  if (tg?.initDataUnsafe?.user) {
+    const u = tg.initDataUnsafe.user;
+    userInfo.value = `${u.first_name} ${u.last_name || ''} (ID: ${u.id})`;
+  } else {
+    userInfo.value = "Chưa lấy được info (Đang chạy Local?)";
+  }
 
-      console.log("Dữ liệu nhận từ Android:", jsonString);
+  // Cấu hình nút Main Button (Nút xanh to ở dưới)
+  tg?.MainButton.setParams({
+    text: 'VIEW ORDER',
+    color: '#31b545', // Màu xanh Durger King
+    text_color: '#ffffff'
+  });
 
-      // 2. Parse JSON ra để dùng
-      const data = JSON.parse(jsonString);
-
-      form.value.name = data.name || '';
-      form.value.age = data.age || '';
-      form.value.job = data.job || '';
-      form.value.token = data.token || '';
-      form.value.userId = data.userId || '';
-
+  // Lắng nghe sự kiện bấm nút Main Button
+  tg?.MainButton.onClick(() => {
+    if (currentView.value === 'menu') {
+      // Đang ở Menu -> Chuyển sang Order
+      currentView.value = 'order';
+      tg.BackButton.show(); // Hiện nút Back
     } else {
-      console.warn("Không tìm thấy Android Bridge (Đang chạy trên trình duyệt thường?)");
+      // Đang ở Order -> Gửi đơn hàng & Đóng App
+      const dataToSend = {
+        cart: cart.value,
+        total: totalPrice.value,
+        user: tg.initDataUnsafe?.user
+      };
+
+      // Gửi dữ liệu về cho Bot (hoặc Android App sau này)
+      tg.sendData(JSON.stringify(dataToSend));
     }
-  } catch (e) {
-    console.error("Lỗi lấy dữ liệu khởi tạo:", e);
+  });
+
+  // Lắng nghe nút Back (trên thanh tiêu đề)
+  tg?.BackButton.onClick(() => {
+    currentView.value = 'menu';
+    tg.BackButton.hide();
+  });
+});
+
+// --- 4. THEO DÕI GIỎ HÀNG ĐỂ CẬP NHẬT NÚT ---
+watch([totalPrice, currentView], ([newPrice, view]) => {
+  if (newPrice > 0) {
+    tg?.MainButton.show();
+    if (view === 'menu') {
+      tg?.MainButton.setText('VIEW ORDER');
+    } else {
+      tg?.MainButton.setText(`PAY $${newPrice.toFixed(2)}`);
+    }
+  } else {
+    tg?.MainButton.hide();
   }
 });
 
-// 5. KHI BẤM XÁC NHẬN (Giữ nguyên như cũ)
-const sendBackToAndroid = () => {
-  const dataToSend = {
-    name: form.value.name,
-    age: form.value.age,
-    job: form.value.job
-  };
+// Logic thêm bớt món
+const updateCart = (product: Product, change: number) => {
+  const currentQty = cart.value[product.id] || 0;
+  const newQty = currentQty + change;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const proxy = (window as any).TelegramWebviewProxy;
-  if (proxy) {
-    proxy.postEvent('send_data_back_to_android', JSON.stringify(dataToSend));
-  } else {
-    // Chế độ test trên trình duyệt PC
-    alert("Gửi về Android: " + JSON.stringify(dataToSend));
-  }
+  // Rung nhẹ điện thoại (Haptic Feedback) chuẩn Telegram
+  tg?.HapticFeedback.impactOccurred('medium');
+
+  if (newQty <= 0) delete cart.value[product.id];
+  else cart.value[product.id] = newQty;
 };
 </script>
 
 <template>
-  <AppPage title="Sửa thông tin" :back="false">
-    <div class="container">
-      <h3>Dữ liệu từ Android:</h3>
+  <AppPage :title="currentView === 'menu' ? 'Durger King' : 'Thanh toán'" :back="false">
 
-      <div class="form-group">
-        <label>Tên:</label>
-        <input v-model="form.name" />
-      </div>
-
-      <div class="form-group">
-        <label>Tuổi:</label>
-        <input v-model="form.age" />
-      </div>
-
-      <div class="form-group">
-        <label>Nghề:</label>
-        <input v-model="form.job" />
-      </div>
-      <p>Token nhận được: {{ form.token.substring(0, 10) }}...</p>
-      <button class="btn-confirm" @click="sendBackToAndroid">
-        XÁC NHẬN & QUAY VỀ
-      </button>
+    <div class="header-info">
+      Chào, <b>{{ userInfo }}</b>
     </div>
-  </AppPage>
+
+    <div v-if="currentView === 'menu'" class="menu-grid">
+      <div class="product-card" v-for="p in products" :key="p.id">
+        <div class="p-icon">{{ p.icon }}</div>
+        <div class="p-name">{{ p.name }}</div>
+        <div class="p-price">${{ p.price }}</div>
+
+        <div v-if="cart[p.id]" class="controls">
+          <button class="btn-circle remove" @click="updateCart(p, -1)">-</button>
+          <span class="qty">{{ cart[p.id] }}</span>
+          <button class="btn-circle add" @click="updateCart(p, 1)">+</button>
+        </div>
+        <button v-else class="btn-add" @click="updateCart(p, 1)">ADD</button>
+      </div>
+    </div>
+
+    <div v-else class="order-summary">
+      <div class="order-img">🍔🍟🥤</div>
+      <h3>Đơn hàng của bạn</h3>
+      <div class="order-list">
+        <div v-for="(qty, id) in cart" :key="id" class="order-item">
+          <span>{{ products.find(p => p.id == Number(id))?.name }} x {{ qty }}</span>
+          <b>${{ (products.find(p => p.id == Number(id))!.price * qty).toFixed(2) }}</b>
+        </div>
+      </div>
+      <div class="total-line">
+        <span>Tổng cộng:</span>
+        <span class="total-price">${{ totalPrice.toFixed(2) }}</span>
+      </div>
+    </div>
+
+    <div style="height: 100px;"></div> </AppPage>
 </template>
 
 <style scoped>
-.container { padding: 20px; }
-.form-group { margin-bottom: 15px; }
-label { display: block; font-weight: bold; margin-bottom: 5px; }
-input {
-  width: 100%; padding: 10px;
-  border: 1px solid #ccc; border-radius: 8px; font-size: 16px;
+/* CSS giả lập giao diện Durger King */
+.header-info {
+  background: #f5f5f5; padding: 10px; text-align: center;
+  font-size: 14px; color: #555;
 }
-.btn-confirm {
-  width: 100%; padding: 15px; margin-top: 20px;
-  background-color: #31b545; color: white; border: none;
-  border-radius: 10px; font-size: 18px; font-weight: bold;
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 2 cột */
+  gap: 15px; padding: 15px;
+}
+
+.product-card {
+  background: white; border-radius: 12px;
+  padding: 15px; text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.p-icon { font-size: 50px; margin-bottom: 5px; }
+.p-name { font-weight: bold; margin-bottom: 2px; }
+.p-price { color: #888; font-size: 14px; margin-bottom: 10px; }
+
+.btn-add {
+  background: #f1a037; color: white; border: none;
+  width: 100%; padding: 8px; border-radius: 6px; font-weight: bold;
+}
+
+.controls {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.btn-circle {
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  color: white; font-weight: bold; font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+.add { background: #f1a037; }
+.remove { background: #e64d44; }
+.qty { font-weight: bold; }
+
+/* CSS cho màn hình Order */
+.order-summary { padding: 30px; text-align: center; }
+.order-img { font-size: 60px; margin-bottom: 20px; }
+.order-list { margin-top: 20px; text-align: left; }
+.order-item {
+  display: flex; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid #eee;
+}
+.total-line {
+  display: flex; justify-content: space-between;
+  margin-top: 20px; font-size: 18px; font-weight: bold; color: #31b545;
 }
 </style>
