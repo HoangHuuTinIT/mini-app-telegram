@@ -67,7 +67,7 @@ onMounted(() => {
     if (currentView.value === 'menu') {
       // Đang ở Menu -> Chuyển sang Order
       currentView.value = 'order';
-      tg.BackButton.show(); // Hiện nút Back
+      // tg.BackButton.show(); // Hiện nút Back
     } else {
       // Đang ở Order -> Gửi đơn hàng & Đóng App
       const dataToSend = {
