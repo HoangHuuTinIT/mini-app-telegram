@@ -42,6 +42,7 @@ const totalPrice = computed(() => {
 const tg = (window as any).Telegram?.WebApp;
 
 onMounted(() => {
+
   // Báo cho Telegram biết App đã sẵn sàng
   tg?.ready();
   tg?.expand(); // Mở full màn hình
