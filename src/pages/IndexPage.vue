@@ -7,7 +7,7 @@ import AppPage from '@/components/AppPage.vue';
   <AppPage title="Mini App Đơn Giản" :back="false">
     <div class="container">
       <div class="card">
-        <h1>🚀 Đã mở thành công!hhhhhhhhhhhh</h1>
+        <h1>🚀 Đã mở thành công!</h1>
         <p>Đây là giao diện Web (Vue.js) đang chạy bên trong Android WebView.</p>
         <p class="info">Chưa có kết nối dữ liệu nào được thiết lập.</p>
       </div>
