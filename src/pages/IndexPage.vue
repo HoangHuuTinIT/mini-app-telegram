@@ -2,23 +2,25 @@
 import { ref, onMounted } from 'vue';
 import AppPage from '@/components/AppPage.vue';
 
-// Biến lưu dữ liệu
 const form = ref({
   name: '',
   age: '',
   job: ''
 });
 
-// 4. KHI MỞ WEB LÊN: ĐỌC DỮ LIỆU TỪ URL
+// 4. KHI MỞ WEB LÊN: ĐỌC DỮ LIỆU TỪ HASH (Sau dấu #)
 onMounted(() => {
-  // window.location.search sẽ lấy phần "?name=...&age=..."
-  const params = new URLSearchParams(window.location.search);
+  // Hash sẽ có dạng: #tgWebAppData=...&name=Tin&age=20...
+  // .slice(1) để bỏ dấu # ở đầu đi
+  const hashString = window.location.hash.slice(1);
+  const params = new URLSearchParams(hashString);
+
   form.value.name = params.get('name') || '';
   form.value.age = params.get('age') || '';
   form.value.job = params.get('job') || '';
 });
 
-// 5. KHI BẤM XÁC NHẬN: GỬI VỀ ANDROID
+// 5. KHI BẤM XÁC NHẬN (Giữ nguyên như cũ)
 const sendBackToAndroid = () => {
   const dataToSend = {
     name: form.value.name,
@@ -26,14 +28,13 @@ const sendBackToAndroid = () => {
     job: form.value.job
   };
 
-  // Gọi Bridge
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proxy = (window as any).TelegramWebviewProxy;
   if (proxy) {
-    // Tự định nghĩa sự kiện: 'send_data_back_to_android'
     proxy.postEvent('send_data_back_to_android', JSON.stringify(dataToSend));
   } else {
-    alert("Không tìm thấy Android Bridge! Dữ liệu: " + JSON.stringify(dataToSend));
+    // Chế độ test trên trình duyệt PC
+    alert("Gửi về Android: " + JSON.stringify(dataToSend));
   }
 };
 </script>
