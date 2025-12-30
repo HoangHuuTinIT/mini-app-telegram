@@ -226,7 +226,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-    // @ts-expect-error type check
     window.removeEventListener('android_receive_data', onAndroidData);
 
     if (cleanupViewportListener) cleanupViewportListener();
