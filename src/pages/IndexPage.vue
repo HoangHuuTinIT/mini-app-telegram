@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
+import { onMounted, unref } from 'vue'; // Thêm unref
 import {
   viewport,
   themeParams,
@@ -13,8 +13,9 @@ const sendToAndroid = () => {
   const proxy = (window as any).TelegramWebviewProxy;
 
   if (proxy) {
-    // SỬA LỖI 1: initData.user là Computed Ref, phải .value mới lấy được dữ liệu thật
-    const user = initData.user.value;
+    // SỬA LỖI: Dùng unref() để lấy dữ liệu User an toàn nhất
+    // Nó hoạt động bất kể initData.user là Ref hay Object thường
+    const user = unref(initData.user);
 
     proxy.postEvent('send_data_back_to_android', JSON.stringify({
       name: user?.firstName || 'User',
@@ -39,24 +40,24 @@ onMounted(() => {
       <div class="card">
         <h4>📱 Viewport Info</h4>
         <div v-if="viewport">
-          <p>Height: <b>{{ viewport.height.value }}px</b></p>
-          <p>Width: <b>{{ viewport.width.value }}px</b></p>
-          <p>Expanded: <b>{{ viewport.isExpanded.value ? 'Yes' : 'No' }}</b></p>
+          <p>Height: <b>{{ viewport.height }}px</b></p>
+          <p>Width: <b>{{ viewport.width }}px</b></p>
+          <p>Expanded: <b>{{ viewport.isExpanded ? 'Yes' : 'No' }}</b></p>
         </div>
         <div v-else class="loading">Đang đợi Android trả lời...</div>
       </div>
 
-      <div class="card" :style="{ borderColor: themeParams.buttonColor.value }">
+      <div class="card" :style="{ borderColor: themeParams?.buttonColor }">
         <h4>🎨 Theme Info</h4>
         <div v-if="themeParams">
           <p>Bg Color:
-            <span :style="{ background: themeParams.bgColor.value }">
-              {{ themeParams.bgColor.value }}
+            <span :style="{ background: themeParams.bgColor }">
+              {{ themeParams.bgColor }}
             </span>
           </p>
           <p>Button Color:
-            <span :style="{ background: themeParams.buttonColor.value }">
-              {{ themeParams.buttonColor.value }}
+            <span :style="{ background: themeParams.buttonColor }">
+              {{ themeParams.buttonColor }}
             </span>
           </p>
         </div>
