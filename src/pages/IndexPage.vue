@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, unref, computed, ref, onUnmounted, type CSSProperties } from 'vue';
+import { onMounted, unref, ref, onUnmounted, reactive } from 'vue';
+
 import {
   viewport,
   themeParams,
-  initData,
-  on
+  on,
+  type ThemeParams,
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
@@ -17,163 +18,191 @@ const safeUnwrap = (val: any) => {
   return unref(val);
 };
 
-// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT (FIXED) ---
-// Dùng Ref riêng để lưu trữ state, tránh phụ thuộc hoàn toàn vào SDK binding
+// --- DATA FORM ---
+const formData = reactive({
+  name: 'Vue User',
+  age: '25',
+  job: 'Developer'
+});
+
+// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
 const vpHeight = ref(0);
 const vpWidth = ref(0);
 const vpExpanded = ref(false);
+const vpStable = ref(false);
 
-// Hàm cập nhật state từ SDK
 const updateViewportState = () => {
-    // Thử lấy từ SDK nếu có
     const h = safeUnwrap(viewport.height);
     const w = safeUnwrap(viewport.width);
     const e = safeUnwrap(viewport.isExpanded);
+    const s = safeUnwrap(viewport.isStable);
 
     if (h) vpHeight.value = h;
     if (w) vpWidth.value = w;
     if (e !== undefined) vpExpanded.value = !!e;
+    if (s !== undefined) vpStable.value = !!s;
 };
 
-// Lắng nghe sự kiện thủ công để đảm bảo cập nhật
 const cleanupViewportListener = on('viewport_changed', (payload) => {
-    console.log("Vue received viewport_changed event:", payload);
-    if (payload) {
-        vpHeight.value = payload.height;
-        vpWidth.value = payload.width;
-        vpExpanded.value = payload.is_expanded;
-    }
+    vpHeight.value = payload.height;
+    vpWidth.value = payload.width;
+    vpExpanded.value = payload.is_expanded;
+    vpStable.value = payload.is_state_stable;
 });
 
-const isViewportReady = computed(() => vpHeight.value > 0);
+// --- 2. XỬ LÝ SAFE AREA ---
+const safeArea = reactive({ top: 0, bottom: 0, left: 0, right: 0 });
+const contentSafeArea = reactive({ top: 0, bottom: 0, left: 0, right: 0 });
 
-
-// --- 2. XỬ LÝ DỮ LIỆU THEME ---
-const btnColorText = computed(() => {
-  const color = safeUnwrap(themeParams.buttonColor);
-  return color ? String(color) : '#31b545';
+const cleanupSafeAreaListener = on('safe_area_changed', (payload) => {
+  Object.assign(safeArea, payload);
 });
 
-const bgColorText = computed(() => {
-  const color = safeUnwrap(themeParams.bgColor);
-  return color ? String(color) : '#ffffff';
+const cleanupContentSafeAreaListener = on('content_safe_area_changed', (payload) => {
+  Object.assign(contentSafeArea, payload);
 });
 
-// --- STYLE COMPUTED ---
-const cardBorderStyle = computed((): CSSProperties => {
-  return { borderColor: btnColorText.value };
+// --- 3. XỬ LÝ DỮ LIỆU THEME ---
+const themeState = ref<ThemeParams>({});
+
+const cleanupThemeListener = on('theme_changed', (payload) => {
+  themeState.value = payload.theme_params;
 });
 
-const bgSpanStyle = computed((): CSSProperties => {
-  return { background: bgColorText.value };
-});
+// Load theme initial state
+const updateThemeState = () => {
+   const t = safeUnwrap(themeParams.state); // Truy cập state của signal
+   if (t) themeState.value = t;
+};
 
-const btnSpanStyle = computed((): CSSProperties => {
-  return { background: btnColorText.value };
-});
-
-// --- 3. HÀM GỬI DATA ---
+// --- 4. HÀM GỬI DATA ---
 const sendToAndroid = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proxy = (window as any).TelegramWebviewProxy;
 
   if (proxy) {
-    const rawUser = unref(initData.user);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userSafe = rawUser as any;
-
-    proxy.postEvent('send_data_back_to_android', JSON.stringify({
-      name: userSafe?.firstName || 'User',
-      action: 'Click Button Vue',
+    const payload = {
+      name: formData.name,
+      age: formData.age,
+      job: formData.job,
+      action: 'Form Submit',
       timestamp: Date.now()
-    }));
+    };
+
+    proxy.postEvent('send_data_back_to_android', JSON.stringify(payload));
   } else {
     alert("Không tìm thấy Android Bridge! Đang chạy trên Web thường?");
+    console.log("Mock Send:", { ...formData });
   }
 };
 
 onMounted(async () => {
-  console.log("Vue App Mounted");
-
-  // Cập nhật lần đầu (nếu SDK đã có dữ liệu)
   updateViewportState();
+  updateThemeState();
 
-  // Force mount nếu cần
   if (!viewport.isMounted()) {
     try {
       await viewport.mount();
-      console.log("Viewport mounted");
     } catch (e) {
       console.error("Mount viewport error", e);
     }
   }
-
-  // Sau khi mount, cập nhật lại lần nữa cho chắc
   updateViewportState();
 });
 
 onUnmounted(() => {
-    // Dọn dẹp listener khi thoát trang
     if (cleanupViewportListener) cleanupViewportListener();
+    if (cleanupSafeAreaListener) cleanupSafeAreaListener();
+    if (cleanupContentSafeAreaListener) cleanupContentSafeAreaListener();
+    if (cleanupThemeListener) cleanupThemeListener();
 });
 </script>
 
 <template>
-  <AppPage title="Android Bridge Test" :back="false">
-    <div class="status-container">
-      <h3>Kết nối Android Host</h3>
+  <AppPage title="Event Tester" :back="false">
+    <div class="container">
 
-      <div class="card">
-        <h4>📱 Viewport Info</h4>
-        <div v-if="isViewportReady">
-          <p>Height: <b>{{ vpHeight }}px</b></p>
-          <p>Width: <b>{{ vpWidth }}px</b></p>
-          <p>Expanded: <b>{{ vpExpanded ? 'Yes' : 'No' }}</b></p>
+      <!-- FORM INPUT -->
+      <div class="section">
+        <h3>� Gửi Dữ Liệu Về Android</h3>
+        <div class="form-group">
+          <label>Tên:</label>
+          <input v-model="formData.name" type="text" />
         </div>
-        <div v-else class="loading">
-          <p>Đang đợi Android trả lời...</p>
+        <div class="form-group">
+          <label>Tuổi:</label>
+          <input v-model="formData.age" type="number" />
+        </div>
+        <div class="form-group">
+          <label>Nghề nghiệp:</label>
+          <input v-model="formData.job" type="text" />
+        </div>
+        <button class="btn-primary" @click="sendToAndroid" :style="{ backgroundColor: themeState.button_color || '#31b545', color: themeState.button_text_color || '#fff' }">
+          Gửi & Đóng App
+        </button>
+      </div>
+
+      <!-- VIEWPORT -->
+      <div class="section">
+        <h3>📱 Viewport</h3>
+        <div class="grid">
+          <div class="item">W: {{ vpWidth }}</div>
+          <div class="item">H: {{ vpHeight }}</div>
+          <div class="item">Expanded: {{ vpExpanded }}</div>
+          <div class="item">Stable: {{ vpStable }}</div>
         </div>
       </div>
 
-      <div class="card" :style="cardBorderStyle">
-        <h4>🎨 Theme Info</h4>
-
-        <div>
-          <p>Bg Color:
-            <span :style="bgSpanStyle">
-              {{ bgColorText }}
-            </span>
-          </p>
-          <p>Button Color:
-            <span :style="btnSpanStyle">
-              {{ btnColorText }}
-            </span>
-          </p>
-        </div>
+      <!-- SAFE AREA -->
+      <div class="section">
+        <h3>🛡️ Safe Area</h3>
+        <p><b>Screen:</b> T:{{ safeArea.top }} R:{{ safeArea.right }} B:{{ safeArea.bottom }} L:{{ safeArea.left }}</p>
+        <p><b>Content:</b> T:{{ contentSafeArea.top }} R:{{ contentSafeArea.right }} B:{{ contentSafeArea.bottom }} L:{{ contentSafeArea.left }}</p>
       </div>
 
-      <button class="btn-android" @click="sendToAndroid">
-        Gửi Data & Đóng App Android
-      </button>
+      <!-- THEME -->
+      <div class="section" :style="{ backgroundColor: themeState.secondary_bg_color || '#f0f0f0' }">
+        <h3 :style="{ color: themeState.text_color }">🎨 Theme Params</h3>
+        <div class="theme-grid">
+          <div class="color-box" v-for="(val, key) in themeState" :key="key">
+            <span class="color-sample" :style="{ background: val }"></span>
+            <span class="color-name" :style="{ color: themeState.subtitle_text_color }">{{ key }}</span>
+            <code :style="{ color: themeState.hint_color }">{{ val }}</code>
+          </div>
+        </div>
+      </div>
 
     </div>
   </AppPage>
 </template>
 
 <style scoped>
-.status-container { padding: 15px; }
-.card {
-  background: #f5f5f5; border-radius: 10px; padding: 15px; margin-bottom: 15px;
-  border-left: 5px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.container { padding: 15px; display: flex; flex-direction: column; gap: 20px; }
+.section {
+  background: white; padding: 15px; border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
-.loading { color: #888; font-style: italic; }
-.btn-android {
-  width: 100%; padding: 15px; background-color: #31b545; color: white;
-  border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
+h3 { margin-top: 0; margin-bottom: 10px; font-size: 1.1em; opacity: 0.8; }
+
+.form-group { margin-bottom: 10px; }
+.form-group label { display: block; font-size: 0.9em; margin-bottom: 4px; color: #555; }
+.form-group input {
+  width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 16px;
 }
-.btn-android:active { opacity: 0.8; }
-span {
-  display: inline-block; padding: 2px 6px; border-radius: 4px;
-  border: 1px solid #ddd; font-family: monospace;
+
+.btn-primary {
+  width: 100%; padding: 12px; border: none; border-radius: 8px;
+  font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 5px;
 }
+.btn-primary:active { opacity: 0.8; }
+
+.grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.item { background: #f9f9f9; padding: 8px; border-radius: 6px; font-size: 0.9em; }
+
+.theme-grid { display: grid; grid-template-columns: 1fr; gap: 8px; font-size: 0.85em; }
+.color-box { display: flex; align-items: center; gap: 10px; }
+.color-sample { width: 24px; height: 24px; border-radius: 4px; border: 1px solid #eee; flex-shrink: 0; }
+.color-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 </style>
+
