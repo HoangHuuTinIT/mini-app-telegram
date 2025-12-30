@@ -192,6 +192,12 @@ onMounted(async () => {
       console.error("Mount viewport error", e);
     }
   }
+
+  // Mount other components
+  if (!mainButton.isMounted()) mainButton.mount();
+  if (!backButton.isMounted()) backButton.mount();
+  if (!settingsButton.isMounted()) settingsButton.mount();
+
   updateViewportState();
 });
 
