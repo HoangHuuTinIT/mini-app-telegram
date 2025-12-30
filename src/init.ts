@@ -33,11 +33,16 @@ export async function init(options: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isAndroidHost = !!(window as any).TelegramWebviewProxy;
 
-  // FIX 1: Bỏ 'simple', gọi isTMA() không tham số
-  const isRealTelegram = await isTMA();
+  // FIX 1: Bỏ 'simple', gọi isTMA() không tham số, bọc try-catch
+  let isRealTelegram = false;
+  try {
+    isRealTelegram = await isTMA();
+  } catch (e) {
+    console.warn("isTMA check failed, falling back to mock:", e);
+  }
 
   if (!isAndroidHost && !isRealTelegram) {
-    console.log("Running in Mock Mode (Browser Localhost)");
+    console.log("Running in Mock Mode (Browser Localhost or Failed Launch Params)");
 
     // FIX 2: Ép kiểu "as ThemeParams" để TypeScript hiểu đây là mã màu hợp lệ (#xxxxxx)
     const themeParamsMock = {
@@ -94,7 +99,7 @@ export async function init(options: {
           ['signature', 'fake-signature']
         ]).toString()],
         ['tgWebAppVersion', '7.10'],
-        ['tgWebAppPlatform', 'weba'],
+        ['tgWebAppPlatform', 'android'], // Set to android for consistency
       ]),
     });
   } else {
@@ -112,7 +117,9 @@ export async function init(options: {
             tp = themeParams.state() || {};
           } else {
             firstThemeSent = true;
-            tp ||= retrieveLaunchParams().tgWebAppThemeParams;
+            try {
+              tp ||= retrieveLaunchParams().tgWebAppThemeParams;
+            } catch { /* ignore */ }
           }
           return emitEvent('theme_changed', { theme_params: tp });
         }
