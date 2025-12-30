@@ -6,6 +6,7 @@ import {
   themeParams,
   on,
   type ThemeParams,
+  retrieveLaunchParams,
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
@@ -100,7 +101,27 @@ onMounted(async () => {
   updateViewportState();
   updateThemeState();
 
-  // --- NHẬN DATA TỪ ANDROID QUA EVENT (JSON) ---
+  // --- NHẬN DATA TỪ URL (Start Param) ---
+  try {
+    const launchParams = retrieveLaunchParams();
+    if (launchParams.tgWebAppStartParam) {
+      // Dữ liệu từ Android thường được mã hóa Base64 để an toàn trên URL
+      const decodedString = atob(launchParams.tgWebAppStartParam);
+      const startData = JSON.parse(decodedString);
+
+      console.log("Received Start Param:", startData);
+
+      if (startData) {
+        if (startData.name) formData.name = startData.name;
+        if (startData.age) formData.age = String(startData.age);
+        if (startData.job) formData.job = startData.job;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to retrieve or parse start param:", e);
+  }
+
+  // --- NHẬN DATA TỪ ANDROID QUA EVENT (JSON) - Dành cho update real-time ---
   const onAndroidData = (event: Event) => {
     const customEvent = event as CustomEvent;
     const data = customEvent.detail;
