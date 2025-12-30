@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, unref, computed } from 'vue';
+import { onMounted, unref, computed, type CSSProperties } from 'vue';
 import {
   viewport,
   themeParams,
@@ -8,45 +8,34 @@ import {
 import AppPage from '@/components/AppPage.vue';
 
 // --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
-const vpHeight = computed(() => unref(viewport.height));
-const vpWidth = computed(() => unref(viewport.width));
-const vpExpanded = computed(() => unref(viewport.isExpanded));
+// Khai báo rõ kiểu trả về là number hoặc boolean
+const vpHeight = computed((): number | undefined => unref(viewport.height));
+const vpWidth = computed((): number | undefined => unref(viewport.width));
+const vpExpanded = computed((): boolean => !!unref(viewport.isExpanded));
 
-// Sửa lỗi TS2774: Kiểm tra kỹ hơn hoặc dùng !! để ép kiểu boolean rõ ràng
-// viewport.height trả về number, check !== undefined an toàn hơn
-const isViewportReady = computed(() => unref(viewport.height) !== undefined);
+// FIX LỖI TS2774: Khai báo rõ ràng đây là boolean
+const isViewportReady = computed((): boolean => {
+  return typeof unref(viewport.height) === 'number';
+});
 
 // --- 2. XỬ LÝ DỮ LIỆU THEME ---
-// Helper lấy mã màu string raw
-const btnColorText = computed(() => unref(themeParams.buttonColor) || '#31b545');
-const bgColorText = computed(() => unref(themeParams.bgColor) || '#ffffff');
+// FIX: Khai báo rõ ràng trả về string
+const btnColorText = computed((): string => unref(themeParams.buttonColor) || '#31b545');
+const bgColorText = computed((): string => unref(themeParams.bgColor) || '#ffffff');
 
-// FIX LỖI TS2345: Tạo các Style Object Computed riêng biệt
-// Thay vì viết inline object trong template, ta tạo object hoàn chỉnh ở đây
-// Lúc này unref() sẽ lấy giá trị string ra, TS sẽ hiểu đây là object CSS hợp lệ.
-
-// Style cho Button (Card Background)
-const btnStyle = computed(() => {
-  const color = unref(btnColorText);
-  return {
-    backgroundColor: color,
-    borderColor: color
-  };
+// FIX LỖI TS2345:
+// 1. Khai báo kiểu trả về là : CSSProperties
+// 2. Dùng .value khi gọi các computed khác (btnColorText.value) để TS không bị nhầm lẫn
+const cardBorderStyle = computed((): CSSProperties => {
+  return { borderColor: btnColorText.value };
 });
 
-// Style cho Background text
-const bgSpanStyle = computed(() => {
-  return { background: unref(bgColorText) };
+const bgSpanStyle = computed((): CSSProperties => {
+  return { background: bgColorText.value };
 });
 
-// Style cho Button text span
-const btnSpanStyle = computed(() => {
-  return { background: unref(btnColorText) };
-});
-
-// Style cho Border Card
-const cardBorderStyle = computed(() => {
-  return { borderColor: unref(btnColorText) };
+const btnSpanStyle = computed((): CSSProperties => {
+  return { background: btnColorText.value };
 });
 
 // --- 3. HÀM GỬI DATA ---
