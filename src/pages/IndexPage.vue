@@ -11,6 +11,7 @@ import {
   backButton,
   mainButton,
   settingsButton,
+  miniApp,
 } from '@tma.js/sdk-vue';
 
 import AppPage from '@/components/AppPage.vue';
@@ -64,12 +65,23 @@ on('main_button_pressed', () => {
   alert("Main Button clicked!");
 });
 
+const lastEventLog = ref('');
+
 on('back_button_pressed', () => {
-    console.log("Back Button pressed - navigating back");
-    try {
-        router.back();
-    } catch (e) {
-        console.error("Navigation error:", e);
+    console.log("Back Button pressed");
+    lastEventLog.value = `Back Button: ${new Date().toLocaleTimeString()}`;
+
+    // Nếu có lịch sử duyệt thì Back, nếu không thì đóng App
+    if (window.history.length > 1) {
+       try {
+          router.back();
+       } catch (e) {
+          lastEventLog.value = `Back Error: ${e}`;
+       }
+    } else {
+       console.log("Root page - Closing App");
+       lastEventLog.value = "Root page -> Closing App";
+       miniApp.close();
     }
 });
 
