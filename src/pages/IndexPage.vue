@@ -7,32 +7,41 @@ import {
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
-// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
-// KHẮC PHỤC: Bỏ khai báo kiểu ': number', để Vue tự hiểu.
-// Dùng '|| 0' để đảm bảo luôn có số, tránh undefined.
-const vpHeight = computed(() => unref(viewport.height) || 0);
-const vpWidth = computed(() => unref(viewport.width) || 0);
-const vpExpanded = computed(() => !!unref(viewport.isExpanded));
+// --- HELPER: Hàm lấy giá trị từ Signal hoặc Ref an toàn ---
+// FIX LỖI "Unexpected any": Thêm dòng ignore eslint ngay bên dưới
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const safeUnwrap = (val: any) => {
+  if (typeof val === 'function') {
+    return val();
+  }
+  return unref(val);
+};
 
+// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
+// Lấy giá trị an toàn, nếu chưa có thì trả về 0
+const vpHeight = computed(() => safeUnwrap(viewport.height) || 0);
+const vpWidth = computed(() => safeUnwrap(viewport.width) || 0);
+const vpExpanded = computed(() => !!safeUnwrap(viewport.isExpanded));
+
+// Kiểm tra xem đã có dữ liệu chiều cao chưa
 const isViewportReady = computed(() => {
-  return typeof unref(viewport.height) === 'number';
+  const h = safeUnwrap(viewport.height);
+  return typeof h === 'number' && h > 0;
 });
 
 // --- 2. XỬ LÝ DỮ LIỆU THEME ---
-// KHẮC PHỤC: Bỏ khai báo ': string'.
-// Dùng 'as string' nếu cần thiết hoặc fallback value.
+// SỬA LỖI HIỂN THỊ FUNCTION: Dùng safeUnwrap để gọi hàm lấy chuỗi màu
 const btnColorText = computed(() => {
-  const color = unref(themeParams.buttonColor);
+  const color = safeUnwrap(themeParams.buttonColor);
   return color ? String(color) : '#31b545';
 });
 
 const bgColorText = computed(() => {
-  const color = unref(themeParams.bgColor);
+  const color = safeUnwrap(themeParams.bgColor);
   return color ? String(color) : '#ffffff';
 });
 
 // --- STYLE COMPUTED ---
-// Vẫn giữ Type CSSProperties để đảm bảo style không bị lỗi HTMLAttributes
 const cardBorderStyle = computed((): CSSProperties => {
   return { borderColor: btnColorText.value };
 });
@@ -65,8 +74,20 @@ const sendToAndroid = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.log("Vue App Mounted");
+
+  // KÍCH HOẠT THỦ CÔNG (Force Mount)
+  // Nếu Viewport chưa được mount bởi init.ts, ta thử mount lại ở đây
+  if (!viewport.isMounted()) {
+    console.log("Viewport chưa mount, đang thử mount...");
+    try {
+      await viewport.mount();
+      console.log("Viewport mounted thành công!");
+    } catch (e) {
+      console.error("Lỗi mount viewport:", e);
+    }
+  }
 });
 </script>
 
@@ -82,13 +103,18 @@ onMounted(() => {
           <p>Width: <b>{{ vpWidth }}px</b></p>
           <p>Expanded: <b>{{ vpExpanded ? 'Yes' : 'No' }}</b></p>
         </div>
-        <div v-else class="loading">Đang đợi Android trả lời...</div>
+        <div v-else class="loading">
+          <p>Đang đợi Android trả lời...</p>
+          <p style="font-size: 12px; color: orange">
+             (Nếu treo ở đây: Kiểm tra file init.ts hoặc code Android trả về event)
+          </p>
+        </div>
       </div>
 
       <div class="card" :style="cardBorderStyle">
         <h4>🎨 Theme Info</h4>
 
-        <div v-if="btnColorText">
+        <div>
           <p>Bg Color:
             <span :style="bgSpanStyle">
               {{ bgColorText }}
@@ -100,7 +126,6 @@ onMounted(() => {
             </span>
           </p>
         </div>
-        <div v-else class="loading">Đang đợi Android trả lời...</div>
       </div>
 
       <button class="btn-android" @click="sendToAndroid">
