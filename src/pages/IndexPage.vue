@@ -100,6 +100,20 @@ onMounted(async () => {
   updateViewportState();
   updateThemeState();
 
+  // --- PARSE INIT DATA TỪ URL HASH (từ Android gửi qua) ---
+  try {
+    const hash = window.location.hash.slice(1); // Bỏ dấu #
+    const params = new URLSearchParams(hash);
+
+    if (params.has('name')) formData.name = params.get('name') || '';
+    if (params.has('age')) formData.age = params.get('age') || '';
+    if (params.has('job')) formData.job = params.get('job') || '';
+
+    console.log("Parsed from URL:", { name: params.get('name'), age: params.get('age'), job: params.get('job') });
+  } catch (e) {
+    console.error("Error parsing URL params", e);
+  }
+
   if (!viewport.isMounted()) {
     try {
       await viewport.mount();
