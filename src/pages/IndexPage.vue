@@ -8,24 +8,31 @@ import {
 import AppPage from '@/components/AppPage.vue';
 
 // --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
-// Khai báo rõ kiểu trả về là number hoặc boolean
-const vpHeight = computed((): number | undefined => unref(viewport.height));
-const vpWidth = computed((): number | undefined => unref(viewport.width));
-const vpExpanded = computed((): boolean => !!unref(viewport.isExpanded));
+// KHẮC PHỤC: Bỏ khai báo kiểu ': number', để Vue tự hiểu.
+// Dùng '|| 0' để đảm bảo luôn có số, tránh undefined.
+const vpHeight = computed(() => unref(viewport.height) || 0);
+const vpWidth = computed(() => unref(viewport.width) || 0);
+const vpExpanded = computed(() => !!unref(viewport.isExpanded));
 
-// FIX LỖI TS2774: Khai báo rõ ràng đây là boolean
-const isViewportReady = computed((): boolean => {
+const isViewportReady = computed(() => {
   return typeof unref(viewport.height) === 'number';
 });
 
 // --- 2. XỬ LÝ DỮ LIỆU THEME ---
-// FIX: Khai báo rõ ràng trả về string
-const btnColorText = computed((): string => unref(themeParams.buttonColor) || '#31b545');
-const bgColorText = computed((): string => unref(themeParams.bgColor) || '#ffffff');
+// KHẮC PHỤC: Bỏ khai báo ': string'.
+// Dùng 'as string' nếu cần thiết hoặc fallback value.
+const btnColorText = computed(() => {
+  const color = unref(themeParams.buttonColor);
+  return color ? String(color) : '#31b545';
+});
 
-// FIX LỖI TS2345:
-// 1. Khai báo kiểu trả về là : CSSProperties
-// 2. Dùng .value khi gọi các computed khác (btnColorText.value) để TS không bị nhầm lẫn
+const bgColorText = computed(() => {
+  const color = unref(themeParams.bgColor);
+  return color ? String(color) : '#ffffff';
+});
+
+// --- STYLE COMPUTED ---
+// Vẫn giữ Type CSSProperties để đảm bảo style không bị lỗi HTMLAttributes
 const cardBorderStyle = computed((): CSSProperties => {
   return { borderColor: btnColorText.value };
 });
