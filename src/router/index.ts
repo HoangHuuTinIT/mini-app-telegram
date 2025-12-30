@@ -4,6 +4,7 @@ import InitDataPage from '@/pages/InitDataPage.vue';
 import ThemeParamsPage from '@/pages/ThemeParamsPage.vue';
 import LaunchParamsPage from '@/pages/LaunchParamsPage.vue';
 import TonConnectPage from '@/pages/TonConnectPage.vue';
+import OrderPage from '@/pages/OrderPage.vue';
 import IconTonConnect from '@/components/IconTonConnect.vue';
 
 export const routes = [
@@ -43,6 +44,14 @@ export const routes = [
     meta: {
       icon: IconTonConnect,
       title: 'TON Connect',
+    },
+  },
+  {
+    path: '/order',
+    name: 'order',
+    component: OrderPage,
+    meta: {
+      title: 'Your Order',
     },
   },
 ];

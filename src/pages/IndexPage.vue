@@ -62,7 +62,9 @@ const toggleSettingsBtn = () => {
 
 // Listen to button clicks
 on('main_button_pressed', () => {
-  alert("Main Button clicked!");
+    console.log("Main Button pressed");
+    lastEventLog.value = `Main Button: ${new Date().toLocaleTimeString()}`;
+    router.push({ name: 'order' }); // Navigate to order page
 });
 
 const lastEventLog = ref('');
