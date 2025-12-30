@@ -8,31 +8,46 @@ import {
 import AppPage from '@/components/AppPage.vue';
 
 // --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
-// Lấy giá trị thô ra để dùng trong Template
 const vpHeight = computed(() => unref(viewport.height));
 const vpWidth = computed(() => unref(viewport.width));
 const vpExpanded = computed(() => unref(viewport.isExpanded));
-// Tạo biến check xem viewport đã sẵn sàng chưa (thay cho v-if="viewport")
-const isViewportReady = computed(() => typeof unref(viewport.height) === 'number');
 
-// --- 2. XỬ LÝ DỮ LIỆU THEME (Tạo object style sẵn ở đây) ---
-// Việc tạo style object ở đây giúp Template không bị lỗi TS2345
-const buttonStyle = computed(() => {
-  const color = unref(themeParams.buttonColor) || '#31b545';
+// Sửa lỗi TS2774: Kiểm tra kỹ hơn hoặc dùng !! để ép kiểu boolean rõ ràng
+// viewport.height trả về number, check !== undefined an toàn hơn
+const isViewportReady = computed(() => unref(viewport.height) !== undefined);
+
+// --- 2. XỬ LÝ DỮ LIỆU THEME ---
+// Helper lấy mã màu string raw
+const btnColorText = computed(() => unref(themeParams.buttonColor) || '#31b545');
+const bgColorText = computed(() => unref(themeParams.bgColor) || '#ffffff');
+
+// FIX LỖI TS2345: Tạo các Style Object Computed riêng biệt
+// Thay vì viết inline object trong template, ta tạo object hoàn chỉnh ở đây
+// Lúc này unref() sẽ lấy giá trị string ra, TS sẽ hiểu đây là object CSS hợp lệ.
+
+// Style cho Button (Card Background)
+const btnStyle = computed(() => {
+  const color = unref(btnColorText);
   return {
     backgroundColor: color,
     borderColor: color
   };
 });
 
-const bgStyle = computed(() => {
-  const color = unref(themeParams.bgColor) || '#ffffff';
-  return { background: color };
+// Style cho Background text
+const bgSpanStyle = computed(() => {
+  return { background: unref(bgColorText) };
 });
 
-const btnColorText = computed(() => unref(themeParams.buttonColor) || '#31b545');
-const bgColorText = computed(() => unref(themeParams.bgColor) || '#ffffff');
+// Style cho Button text span
+const btnSpanStyle = computed(() => {
+  return { background: unref(btnColorText) };
+});
 
+// Style cho Border Card
+const cardBorderStyle = computed(() => {
+  return { borderColor: unref(btnColorText) };
+});
 
 // --- 3. HÀM GỬI DATA ---
 const sendToAndroid = () => {
@@ -40,8 +55,6 @@ const sendToAndroid = () => {
   const proxy = (window as any).TelegramWebviewProxy;
 
   if (proxy) {
-    // SỬA LỖI USER: Ép kiểu as any để bỏ qua lỗi kiểm tra type khắt khe của TS
-    // Vì ta biết chắc chắn runtime nó sẽ chạy được
     const rawUser = unref(initData.user);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const userSafe = rawUser as any;
@@ -76,17 +89,17 @@ onMounted(() => {
         <div v-else class="loading">Đang đợi Android trả lời...</div>
       </div>
 
-      <div class="card" :style="{ borderColor: btnColorText }">
+      <div class="card" :style="cardBorderStyle">
         <h4>🎨 Theme Info</h4>
 
         <div v-if="btnColorText">
           <p>Bg Color:
-            <span :style="bgStyle">
+            <span :style="bgSpanStyle">
               {{ bgColorText }}
             </span>
           </p>
           <p>Button Color:
-            <span :style="{ background: btnColorText }">
+            <span :style="btnSpanStyle">
               {{ btnColorText }}
             </span>
           </p>
