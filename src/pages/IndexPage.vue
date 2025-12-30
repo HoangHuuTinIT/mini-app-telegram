@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, unref } from 'vue'; // Thêm unref
+import { onMounted, unref, computed } from 'vue';
 import {
   viewport,
   themeParams,
@@ -7,15 +7,28 @@ import {
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
-// 2. Hàm test gửi dữ liệu về Android (Custom Event)
+// --- 1. XỬ LÝ DỮ LIỆU USER AN TOÀN ---
+// Tạo một computed để lấy dữ liệu User ra khỏi vỏ bọc Ref
+const userData = computed(() => unref(initData.user));
+
+// --- 2. XỬ LÝ DỮ LIỆU VIEWPORT (Mở gói ra số/boolean) ---
+const vpHeight = computed(() => unref(viewport.height));
+const vpWidth = computed(() => unref(viewport.width));
+const vpExpanded = computed(() => unref(viewport.isExpanded));
+
+// --- 3. XỬ LÝ DỮ LIỆU THEME (Mở gói ra chuỗi màu) ---
+// Nếu không có màu thì trả về màu mặc định để tránh lỗi undefined
+const btnColor = computed(() => unref(themeParams.buttonColor) || '#31b545');
+const bgColor = computed(() => unref(themeParams.bgColor) || '#ffffff');
+
+// Hàm gửi dữ liệu về Android
 const sendToAndroid = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proxy = (window as any).TelegramWebviewProxy;
 
   if (proxy) {
-    // SỬA LỖI: Dùng unref() để lấy dữ liệu User an toàn nhất
-    // Nó hoạt động bất kể initData.user là Ref hay Object thường
-    const user = unref(initData.user);
+    // Lúc này userData.value chắc chắn là Object User hoặc undefined
+    const user = userData.value;
 
     proxy.postEvent('send_data_back_to_android', JSON.stringify({
       name: user?.firstName || 'User',
@@ -40,24 +53,24 @@ onMounted(() => {
       <div class="card">
         <h4>📱 Viewport Info</h4>
         <div v-if="viewport">
-          <p>Height: <b>{{ viewport.height }}px</b></p>
-          <p>Width: <b>{{ viewport.width }}px</b></p>
-          <p>Expanded: <b>{{ viewport.isExpanded ? 'Yes' : 'No' }}</b></p>
+          <p>Height: <b>{{ vpHeight }}px</b></p>
+          <p>Width: <b>{{ vpWidth }}px</b></p>
+          <p>Expanded: <b>{{ vpExpanded ? 'Yes' : 'No' }}</b></p>
         </div>
         <div v-else class="loading">Đang đợi Android trả lời...</div>
       </div>
 
-      <div class="card" :style="{ borderColor: themeParams?.buttonColor }">
+      <div class="card" :style="{ borderColor: btnColor }">
         <h4>🎨 Theme Info</h4>
         <div v-if="themeParams">
           <p>Bg Color:
-            <span :style="{ background: themeParams.bgColor }">
-              {{ themeParams.bgColor }}
+            <span :style="{ background: bgColor }">
+              {{ bgColor }}
             </span>
           </p>
           <p>Button Color:
-            <span :style="{ background: themeParams.buttonColor }">
-              {{ themeParams.buttonColor }}
+            <span :style="{ background: btnColor }">
+              {{ btnColor }}
             </span>
           </p>
         </div>
