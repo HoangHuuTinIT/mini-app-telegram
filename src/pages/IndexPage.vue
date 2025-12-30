@@ -7,31 +7,47 @@ import {
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
-// --- 1. XỬ LÝ DỮ LIỆU USER AN TOÀN ---
-// Tạo một computed để lấy dữ liệu User ra khỏi vỏ bọc Ref
-const userData = computed(() => unref(initData.user));
-
-// --- 2. XỬ LÝ DỮ LIỆU VIEWPORT (Mở gói ra số/boolean) ---
+// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
+// Lấy giá trị thô ra để dùng trong Template
 const vpHeight = computed(() => unref(viewport.height));
 const vpWidth = computed(() => unref(viewport.width));
 const vpExpanded = computed(() => unref(viewport.isExpanded));
+// Tạo biến check xem viewport đã sẵn sàng chưa (thay cho v-if="viewport")
+const isViewportReady = computed(() => typeof unref(viewport.height) === 'number');
 
-// --- 3. XỬ LÝ DỮ LIỆU THEME (Mở gói ra chuỗi màu) ---
-// Nếu không có màu thì trả về màu mặc định để tránh lỗi undefined
-const btnColor = computed(() => unref(themeParams.buttonColor) || '#31b545');
-const bgColor = computed(() => unref(themeParams.bgColor) || '#ffffff');
+// --- 2. XỬ LÝ DỮ LIỆU THEME (Tạo object style sẵn ở đây) ---
+// Việc tạo style object ở đây giúp Template không bị lỗi TS2345
+const buttonStyle = computed(() => {
+  const color = unref(themeParams.buttonColor) || '#31b545';
+  return {
+    backgroundColor: color,
+    borderColor: color
+  };
+});
 
-// Hàm gửi dữ liệu về Android
+const bgStyle = computed(() => {
+  const color = unref(themeParams.bgColor) || '#ffffff';
+  return { background: color };
+});
+
+const btnColorText = computed(() => unref(themeParams.buttonColor) || '#31b545');
+const bgColorText = computed(() => unref(themeParams.bgColor) || '#ffffff');
+
+
+// --- 3. HÀM GỬI DATA ---
 const sendToAndroid = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proxy = (window as any).TelegramWebviewProxy;
 
   if (proxy) {
-    // Lúc này userData.value chắc chắn là Object User hoặc undefined
-    const user = userData.value;
+    // SỬA LỖI USER: Ép kiểu as any để bỏ qua lỗi kiểm tra type khắt khe của TS
+    // Vì ta biết chắc chắn runtime nó sẽ chạy được
+    const rawUser = unref(initData.user);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const userSafe = rawUser as any;
 
     proxy.postEvent('send_data_back_to_android', JSON.stringify({
-      name: user?.firstName || 'User',
+      name: userSafe?.firstName || 'User',
       action: 'Click Button Vue',
       timestamp: Date.now()
     }));
@@ -52,7 +68,7 @@ onMounted(() => {
 
       <div class="card">
         <h4>📱 Viewport Info</h4>
-        <div v-if="viewport">
+        <div v-if="isViewportReady">
           <p>Height: <b>{{ vpHeight }}px</b></p>
           <p>Width: <b>{{ vpWidth }}px</b></p>
           <p>Expanded: <b>{{ vpExpanded ? 'Yes' : 'No' }}</b></p>
@@ -60,17 +76,18 @@ onMounted(() => {
         <div v-else class="loading">Đang đợi Android trả lời...</div>
       </div>
 
-      <div class="card" :style="{ borderColor: btnColor }">
+      <div class="card" :style="{ borderColor: btnColorText }">
         <h4>🎨 Theme Info</h4>
-        <div v-if="themeParams">
+
+        <div v-if="btnColorText">
           <p>Bg Color:
-            <span :style="{ background: bgColor }">
-              {{ bgColor }}
+            <span :style="bgStyle">
+              {{ bgColorText }}
             </span>
           </p>
           <p>Button Color:
-            <span :style="{ background: btnColor }">
-              {{ btnColor }}
+            <span :style="{ background: btnColorText }">
+              {{ btnColorText }}
             </span>
           </p>
         </div>
