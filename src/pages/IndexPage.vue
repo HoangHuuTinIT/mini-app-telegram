@@ -56,25 +56,17 @@ const toggleSettingsBtn = () => {
 };
 
 // Listen to button clicks
-// Listen to button clicks
-// Sử dụng hàm an toàn để tránh lỗi "is not a function" nếu SDK thay đổi version
-const attachListener = (btn: any, name: string) => {
-  try {
-    if (typeof btn.on === 'function') {
-      btn.on('click', () => alert(`${name} Clicked!`));
-    } else if (typeof btn.onClick === 'function') {
-      btn.onClick(() => alert(`${name} Clicked!`));
-    } else {
-      console.warn(`Cannot attach listener to ${name}`);
-    }
-  } catch (e) {
-    console.warn(`Error attaching listener to ${name}:`, e);
-  }
-};
+on('main_button_pressed', () => {
+  alert("Main Button clicked!");
+});
 
-attachListener(mainButton, 'Main Button');
-attachListener(backButton, 'Back Button');
-attachListener(settingsButton, 'Settings');
+on('back_button_pressed', () => {
+  alert("Back Button clicked!");
+});
+
+on('settings_button_pressed', () => {
+  alert("Settings clicked!");
+});
 
 // --- DATA FORM ---
 const formData = reactive({
