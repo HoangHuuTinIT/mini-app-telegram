@@ -148,6 +148,19 @@ const updateThemeState = () => {
    if (t) themeState.value = t;
 };
 
+// --- NHẬN DATA TỪ ANDROID QUA EVENT (JSON) - Dành cho update real-time ---
+const onAndroidData = (event: Event) => {
+  const customEvent = event as CustomEvent;
+  const data = customEvent.detail;
+  console.log("Received Data from Android via Event:", data);
+
+  if (data) {
+    if (data.name) formData.name = data.name;
+    if (data.age) formData.age = String(data.age);
+    if (data.job) formData.job = data.job;
+  }
+};
+
 // --- 4. HÀM GỬI DATA ---
 const sendToAndroid = () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -194,18 +207,6 @@ onMounted(async () => {
   }
 
   // --- NHẬN DATA TỪ ANDROID QUA EVENT (JSON) - Dành cho update real-time ---
-  const onAndroidData = (event: Event) => {
-    const customEvent = event as CustomEvent;
-    const data = customEvent.detail;
-    console.log("Received Data from Android via Event:", data);
-
-    if (data) {
-      if (data.name) formData.name = data.name;
-      if (data.age) formData.age = String(data.age); // convert to string just in case
-      if (data.job) formData.job = data.job;
-    }
-  };
-
   window.addEventListener('android_receive_data', onAndroidData);
 
   if (!viewport.isMounted()) {
