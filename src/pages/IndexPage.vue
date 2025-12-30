@@ -1,53 +1,90 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { routes } from '@/router';
+import { onMounted, computed } from 'vue';
+import {
+  viewport,
+  themeParams,
+  initData
+} from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
-import AppLink from '@/components/AppLink.vue';
 
-const nonIndexRoutes = computed(() => routes.filter((r) => !!r.meta?.title));
+// 2. Hàm test gửi dữ liệu về Android (Custom Event)
+const sendToAndroid = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proxy = (window as any).TelegramWebviewProxy;
+
+  if (proxy) {
+    // SỬA LỖI 1: initData.user là Computed Ref, phải .value mới lấy được dữ liệu thật
+    const user = initData.user.value;
+
+    proxy.postEvent('send_data_back_to_android', JSON.stringify({
+      name: user?.firstName || 'User',
+      action: 'Click Button Vue',
+      timestamp: Date.now()
+    }));
+  } else {
+    alert("Không tìm thấy Android Bridge! Đang chạy trên Web thường?");
+  }
+};
+
+onMounted(() => {
+  console.log("Vue App Mounted");
+});
 </script>
 
 <template>
-  <AppPage title="Home Page" :back="false">
-    <p>
-      This page is a home page in this boilerplate. You can use the links below to visit other
-      pages with their own functionality.
-    </p>
-    <ul class="index-page__links">
-      <li v-for="route in nonIndexRoutes" :key="route.name" class="index-page__link-item">
-        <AppLink class="index-page__link" :to="{ name: route.name }">
-          <i v-if="route.meta?.icon" class="index-page__link-icon">
-            <component :is="route.meta.icon" />
-          </i>
-          {{ route.meta!.title }}
-        </AppLink>
-      </li>
-    </ul>
+  <AppPage title="Android Bridge Test" :back="false">
+    <div class="status-container">
+      <h3>Kết nối Android Host</h3>
+
+      <div class="card">
+        <h4>📱 Viewport Info</h4>
+        <div v-if="viewport">
+          <p>Height: <b>{{ viewport.height.value }}px</b></p>
+          <p>Width: <b>{{ viewport.width.value }}px</b></p>
+          <p>Expanded: <b>{{ viewport.isExpanded.value ? 'Yes' : 'No' }}</b></p>
+        </div>
+        <div v-else class="loading">Đang đợi Android trả lời...</div>
+      </div>
+
+      <div class="card" :style="{ borderColor: themeParams.buttonColor.value }">
+        <h4>🎨 Theme Info</h4>
+        <div v-if="themeParams">
+          <p>Bg Color:
+            <span :style="{ background: themeParams.bgColor.value }">
+              {{ themeParams.bgColor.value }}
+            </span>
+          </p>
+          <p>Button Color:
+            <span :style="{ background: themeParams.buttonColor.value }">
+              {{ themeParams.buttonColor.value }}
+            </span>
+          </p>
+        </div>
+        <div v-else class="loading">Đang đợi Android trả lời...</div>
+      </div>
+
+      <button class="btn-android" @click="sendToAndroid">
+        Gửi Data & Đóng App Android
+      </button>
+
+    </div>
   </AppPage>
 </template>
 
 <style scoped>
-.index-page__links {
-  list-style: none;
-  padding-left: 0;
+.status-container { padding: 15px; }
+.card {
+  background: #f5f5f5; border-radius: 10px; padding: 15px; margin-bottom: 15px;
+  border-left: 5px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
-.index-page__link {
-  font-weight: bold;
-  display: inline-flex;
-  gap: 5px;
+.loading { color: #888; font-style: italic; }
+.btn-android {
+  width: 100%; padding: 15px; background-color: #31b545; color: white;
+  border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer;
 }
-
-.index-page__link-item + .index-page__link-item {
-  margin-top: 10px;
-}
-
-.index-page__link-icon {
-  width: 20px;
-  display: block;
-}
-
-.index-page__link-icon svg {
-  display: block;
+.btn-android:active { opacity: 0.8; }
+span {
+  display: inline-block; padding: 2px 6px; border-radius: 4px;
+  border: 1px solid #ddd; font-family: monospace;
 }
 </style>
