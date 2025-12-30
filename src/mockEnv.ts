@@ -1,11 +1,14 @@
 import { emitEvent, isTMA, mockTelegramEnv } from '@tma.js/sdk-vue';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isAndroidHost = !!(window as any).TelegramWebviewProxy;
+
 // QUAN TRỌNG: Đã sửa dòng này thành 'true' để luôn chạy giả lập
 // Kể cả khi build lên GitHub Pages vẫn sẽ có thông tin user giả.
 if (true) {
   // Kiểm tra xem có phải đang chạy trong Telegram thật không.
-  // Nếu không phải (đang chạy trên web/android webview), thì mới kích hoạt Mock.
-  if (!await isTMA('complete')) {
+  // Nếu không phải (đang chạy trên web/android webview) VÀ KHÔNG PHẢI Android Host tự code, thì mới kích hoạt Mock.
+  if (!isAndroidHost && !await isTMA('complete')) {
     const themeParams = {
       accent_text_color: '#6ab2f2',
       bg_color: '#17212b',
@@ -57,10 +60,10 @@ if (true) {
           ['hash', 'some-hash'],
           ['signature', 'some-signature'],
           ['user', JSON.stringify({
-              id: 999999,
-              first_name: 'Super',
-              last_name: 'App User',
-              username: 'demo_user'
+            id: 999999,
+            first_name: 'Super',
+            last_name: 'App User',
+            username: 'demo_user'
           })],
         ]).toString()],
         ['tgWebAppVersion', '8.4'],
