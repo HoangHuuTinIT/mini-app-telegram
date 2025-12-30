@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { onMounted, unref, computed, type CSSProperties } from 'vue';
+import { onMounted, unref, computed, ref, onUnmounted, type CSSProperties } from 'vue';
 import {
   viewport,
   themeParams,
-  initData
+  initData,
+  on
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
 // --- HELPER: Hàm lấy giá trị từ Signal hoặc Ref an toàn ---
-// FIX LỖI "Unexpected any": Thêm dòng ignore eslint ngay bên dưới
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const safeUnwrap = (val: any) => {
   if (typeof val === 'function') {
@@ -17,20 +17,38 @@ const safeUnwrap = (val: any) => {
   return unref(val);
 };
 
-// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT ---
-// Lấy giá trị an toàn, nếu chưa có thì trả về 0
-const vpHeight = computed(() => safeUnwrap(viewport.height) || 0);
-const vpWidth = computed(() => safeUnwrap(viewport.width) || 0);
-const vpExpanded = computed(() => !!safeUnwrap(viewport.isExpanded));
+// --- 1. XỬ LÝ DỮ LIỆU VIEWPORT (FIXED) ---
+// Dùng Ref riêng để lưu trữ state, tránh phụ thuộc hoàn toàn vào SDK binding
+const vpHeight = ref(0);
+const vpWidth = ref(0);
+const vpExpanded = ref(false);
 
-// Kiểm tra xem đã có dữ liệu chiều cao chưa
-const isViewportReady = computed(() => {
-  const h = safeUnwrap(viewport.height);
-  return typeof h === 'number' && h > 0;
+// Hàm cập nhật state từ SDK
+const updateViewportState = () => {
+    // Thử lấy từ SDK nếu có
+    const h = safeUnwrap(viewport.height);
+    const w = safeUnwrap(viewport.width);
+    const e = safeUnwrap(viewport.isExpanded);
+
+    if (h) vpHeight.value = h;
+    if (w) vpWidth.value = w;
+    if (e !== undefined) vpExpanded.value = !!e;
+};
+
+// Lắng nghe sự kiện thủ công để đảm bảo cập nhật
+const cleanupViewportListener = on('viewport_changed', (payload) => {
+    console.log("Vue received viewport_changed event:", payload);
+    if (payload) {
+        vpHeight.value = payload.height;
+        vpWidth.value = payload.width;
+        vpExpanded.value = payload.is_expanded;
+    }
 });
 
+const isViewportReady = computed(() => vpHeight.value > 0);
+
+
 // --- 2. XỬ LÝ DỮ LIỆU THEME ---
-// SỬA LỖI HIỂN THỊ FUNCTION: Dùng safeUnwrap để gọi hàm lấy chuỗi màu
 const btnColorText = computed(() => {
   const color = safeUnwrap(themeParams.buttonColor);
   return color ? String(color) : '#31b545';
@@ -77,17 +95,26 @@ const sendToAndroid = () => {
 onMounted(async () => {
   console.log("Vue App Mounted");
 
-  // KÍCH HOẠT THỦ CÔNG (Force Mount)
-  // Nếu Viewport chưa được mount bởi init.ts, ta thử mount lại ở đây
+  // Cập nhật lần đầu (nếu SDK đã có dữ liệu)
+  updateViewportState();
+
+  // Force mount nếu cần
   if (!viewport.isMounted()) {
-    console.log("Viewport chưa mount, đang thử mount...");
     try {
       await viewport.mount();
-      console.log("Viewport mounted thành công!");
+      console.log("Viewport mounted");
     } catch (e) {
-      console.error("Lỗi mount viewport:", e);
+      console.error("Mount viewport error", e);
     }
   }
+
+  // Sau khi mount, cập nhật lại lần nữa cho chắc
+  updateViewportState();
+});
+
+onUnmounted(() => {
+    // Dọn dẹp listener khi thoát trang
+    if (cleanupViewportListener) cleanupViewportListener();
 });
 </script>
 
@@ -105,9 +132,6 @@ onMounted(async () => {
         </div>
         <div v-else class="loading">
           <p>Đang đợi Android trả lời...</p>
-          <p style="font-size: 12px; color: orange">
-             (Nếu treo ở đây: Kiểm tra file init.ts hoặc code Android trả về event)
-          </p>
         </div>
       </div>
 
