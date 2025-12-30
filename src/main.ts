@@ -13,7 +13,20 @@ import { publicUrl } from './helperts/publicUrl';
 // Mock the environment in case, we are outside Telegram.
 import './mockEnv';
 
-const launchParams = retrieveLaunchParams();
+const launchParams = (() => {
+  try {
+    return retrieveLaunchParams();
+  } catch (e) {
+    console.warn('Failed to retrieve launch params (likely due to custom params in hash):', e);
+    // Fallback Mock for Hybrid App
+    return {
+      tgWebAppPlatform: 'android',
+      tgWebAppStartParam: '',
+      tgWebAppThemeParams: {},
+    };
+  }
+})();
+
 const { tgWebAppPlatform: platform } = launchParams;
 const debug = (launchParams.tgWebAppStartParam || '').includes('debug') || import.meta.env.DEV;
 

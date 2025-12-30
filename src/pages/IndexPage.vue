@@ -101,18 +101,26 @@ onMounted(async () => {
   updateThemeState();
 
   // --- PARSE INIT DATA TỪ URL HASH (từ Android gửi qua) ---
-  try {
-    const hash = window.location.hash.slice(1); // Bỏ dấu #
-    const params = new URLSearchParams(hash);
+  const parseParams = () => {
+    // 1. Thử lấy từ Query String (?name=...) - Chuẩn mới
+    const query = new URLSearchParams(window.location.search);
+    if (query.has('name')) formData.name = query.get('name') || '';
+    if (query.has('age')) formData.age = query.get('age') || '';
+    if (query.has('job')) formData.job = query.get('job') || '';
 
-    if (params.has('name')) formData.name = params.get('name') || '';
-    if (params.has('age')) formData.age = params.get('age') || '';
-    if (params.has('job')) formData.job = params.get('job') || '';
+    // 2. Thử lấy từ Hash (#name=...) - Chuẩn cũ (fallback)
+    try {
+      const hash = window.location.hash.slice(1);
+      const hashParams = new URLSearchParams(hash);
+      if (hashParams.has('name')) formData.name = hashParams.get('name') || '';
+      if (hashParams.has('age')) formData.age = hashParams.get('age') || '';
+      if (hashParams.has('job')) formData.job = hashParams.get('job') || '';
+    } catch(e) { /* ignore */ }
 
-    console.log("Parsed from URL:", { name: params.get('name'), age: params.get('age'), job: params.get('job') });
-  } catch (e) {
-    console.error("Error parsing URL params", e);
-  }
+    console.log("Parsed Data:", { ...formData });
+  };
+
+  parseParams();
 
   if (!viewport.isMounted()) {
     try {
