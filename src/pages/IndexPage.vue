@@ -7,6 +7,9 @@ import {
   on,
   type ThemeParams,
   retrieveLaunchParams,
+  backButton,
+  mainButton,
+  settingsButton,
 } from '@tma.js/sdk-vue';
 import AppPage from '@/components/AppPage.vue';
 
@@ -18,6 +21,53 @@ const safeUnwrap = (val: any) => {
   }
   return unref(val);
 };
+
+// --- NATIVE BUTTONS LOGIC ---
+const toggleMainBtn = () => {
+    // @ts-ignore
+    if (mainButton.isVisible()) {
+      mainButton.hide();
+    } else {
+      mainButton.setParams({
+        text: 'ACTION FROM VUE',
+        bgColor: '#2481cc',
+        textColor: '#ffffff',
+        isVisible: true
+      });
+    }
+};
+
+const toggleBackBtn = () => {
+   // @ts-ignore
+   if (backButton.isVisible()) {
+     backButton.hide();
+   } else {
+     backButton.show();
+   }
+};
+
+const toggleSettingsBtn = () => {
+   // @ts-ignore
+   if (settingsButton.isVisible()) {
+     settingsButton.hide();
+   } else {
+     settingsButton.show();
+   }
+};
+
+// Listen to button clicks
+// @ts-ignore
+mainButton.on('click', () => {
+  alert("Main Button clicked!");
+});
+// @ts-ignore
+backButton.on('click', () => {
+  alert("Back Button clicked!");
+});
+// @ts-ignore
+settingsButton.on('click', () => {
+  alert("Settings clicked!");
+});
 
 // --- DATA FORM ---
 const formData = reactive({
@@ -197,6 +247,16 @@ onUnmounted(() => {
         <h3>🛡️ Safe Area</h3>
         <p><b>Screen:</b> T:{{ safeArea.top }} R:{{ safeArea.right }} B:{{ safeArea.bottom }} L:{{ safeArea.left }}</p>
         <p><b>Content:</b> T:{{ contentSafeArea.top }} R:{{ contentSafeArea.right }} B:{{ contentSafeArea.bottom }} L:{{ contentSafeArea.left }}</p>
+      </div>
+
+      <!-- NATIVE CONTROLS TEST -->
+      <div class="section">
+        <h3>🎮 Native Controls</h3>
+        <div class="grid">
+          <button @click="toggleMainBtn">Toggle Main Button</button>
+          <button @click="toggleBackBtn">Toggle Back Button</button>
+          <button @click="toggleSettingsBtn">Toggle Settings</button>
+        </div>
       </div>
 
       <!-- THEME -->
