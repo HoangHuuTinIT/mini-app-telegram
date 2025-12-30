@@ -61,23 +61,19 @@ const toggleSettingsBtn = () => {
 
 // Listen to button clicks
 on('main_button_pressed', () => {
-  lastEventLog.value = `Main Button: ${new Date().toLocaleTimeString()}`;
   alert("Main Button clicked!");
 });
 
 on('back_button_pressed', () => {
     console.log("Back Button pressed - navigating back");
-    lastEventLog.value = `Back Button: ${new Date().toLocaleTimeString()}`;
     try {
         router.back();
     } catch (e) {
         console.error("Navigation error:", e);
-        lastEventLog.value = `Back Error: ${e}`;
     }
 });
 
 on('settings_button_pressed', () => {
-  lastEventLog.value = `Settings: ${new Date().toLocaleTimeString()}`;
   alert("Settings clicked!");
 });
 
@@ -127,8 +123,6 @@ const cleanupContentSafeAreaListener = on('content_safe_area_changed', (payload)
 
 // --- 3. XỬ LÝ DỮ LIỆU THEME ---
 const themeState = ref<ThemeParams>({});
-const lastEventLog = ref<string>(""); // Log debug
-
 
 const cleanupThemeListener = on('theme_changed', (payload) => {
   themeState.value = payload.theme_params;
@@ -273,10 +267,9 @@ onUnmounted(() => {
       <div class="section">
         <h3>🎮 Native Controls</h3>
         <div class="grid">
+          <button @click="toggleMainBtn">Toggle Main Button</button>
+          <button @click="toggleBackBtn">Toggle Back Button</button>
           <button @click="toggleSettingsBtn">Toggle Settings</button>
-        </div>
-        <div style="margin-top: 10px; padding: 10px; background: #ffebee; border: 1px dashed red; color: red;">
-           <b>Debug Log:</b> {{ lastEventLog }}
         </div>
       </div>
 
