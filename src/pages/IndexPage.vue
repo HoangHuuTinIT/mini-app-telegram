@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, unref, ref, onUnmounted, reactive } from 'vue';
+import { useRouter } from 'vue-router'; // Import router
 
 import {
   viewport,
@@ -11,7 +12,10 @@ import {
   mainButton,
   settingsButton,
 } from '@tma.js/sdk-vue';
+
 import AppPage from '@/components/AppPage.vue';
+
+const router = useRouter(); // Initialize router
 
 // --- HELPER: Hàm lấy giá trị từ Signal hoặc Ref an toàn ---
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -61,7 +65,12 @@ on('main_button_pressed', () => {
 });
 
 on('back_button_pressed', () => {
-  alert("Back Button clicked!");
+    console.log("Back Button pressed - navigating back");
+    try {
+        router.back();
+    } catch (e) {
+        console.error("Navigation error:", e);
+    }
 });
 
 on('settings_button_pressed', () => {
