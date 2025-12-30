@@ -100,27 +100,20 @@ onMounted(async () => {
   updateViewportState();
   updateThemeState();
 
-  // --- PARSE INIT DATA TỪ URL HASH (từ Android gửi qua) ---
-  const parseParams = () => {
-    // 1. Thử lấy từ Query String (?name=...) - Chuẩn mới
-    const query = new URLSearchParams(window.location.search);
-    if (query.has('name')) formData.name = query.get('name') || '';
-    if (query.has('age')) formData.age = query.get('age') || '';
-    if (query.has('job')) formData.job = query.get('job') || '';
+  // --- NHẬN DATA TỪ ANDROID QUA EVENT (JSON) ---
+  const onAndroidData = (event: Event) => {
+    const customEvent = event as CustomEvent;
+    const data = customEvent.detail;
+    console.log("Received Data from Android via Event:", data);
 
-    // 2. Thử lấy từ Hash (#name=...) - Chuẩn cũ (fallback)
-    try {
-      const hash = window.location.hash.slice(1);
-      const hashParams = new URLSearchParams(hash);
-      if (hashParams.has('name')) formData.name = hashParams.get('name') || '';
-      if (hashParams.has('age')) formData.age = hashParams.get('age') || '';
-      if (hashParams.has('job')) formData.job = hashParams.get('job') || '';
-    } catch(e) { /* ignore */ }
-
-    console.log("Parsed Data:", { ...formData });
+    if (data) {
+      if (data.name) formData.name = data.name;
+      if (data.age) formData.age = String(data.age); // convert to string just in case
+      if (data.job) formData.job = data.job;
+    }
   };
 
-  parseParams();
+  window.addEventListener('android_receive_data', onAndroidData);
 
   if (!viewport.isMounted()) {
     try {
@@ -133,6 +126,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+    // @ts-expect-error type check
+    window.removeEventListener('android_receive_data', onAndroidData);
+
     if (cleanupViewportListener) cleanupViewportListener();
     if (cleanupSafeAreaListener) cleanupSafeAreaListener();
     if (cleanupContentSafeAreaListener) cleanupContentSafeAreaListener();
